@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      body{
+        margin: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <script src = "http://requirejs.org/docs/release/2.3.5/minified/require.js"></script> -->
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.16/p5.min.js"></script>
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src = "/socket.io/socket.io.js"></script>
+    <script>
+      var socket;
+      var myId;
+
+      function setup(){
+        createCanvas(window.innerWidth, window.innerHeight);
+        background(0);
+        noLoop();
+
+        socket = io();
+
+        socket.on('initialize', function(msg){
+          console.log("initial:", socket.id);
+          myId = msg;
+          console.log(myId);
+        });
+
+        socket.on('light', function(msg){
+          background(0);
+          console.log(socket.id, msg);
+          if(msg == socket.id){
+            background(255);
+            setTimeout(function(){
+              background(0);
+              socket.emit('light', socket.id);
+            }, 250);
+            redraw();
+          }
+        });
+      }
+
+      function mouseClicked(){
+        socket.emit('light', socket.id);
+      }
+    </script>
+  </body>
+</html>
