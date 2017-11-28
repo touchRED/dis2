@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-    <title>Socket.IO chat</title>
+    <title>dis2 display</title>
     <style>
       body{
         margin: 0px;
@@ -24,12 +24,6 @@
 
         socket = io();
 
-        socket.on('initialize', function(msg){
-          console.log("initial:", socket.id);
-          myId = msg;
-          console.log(myId);
-        });
-
         socket.on('light', function(msg){
           background(0);
           console.log(socket.id, msg);
@@ -37,16 +31,43 @@
             background(255);
             setTimeout(function(){
               background(0);
-              socket.emit('light', socket.id);
-            }, 250);
+              // socket.emit('light', socket.id);
+            }, 100);
+            redraw();
+          }
+        });
+
+        // socket.on('random', function(msg){
+        //   background(0);
+        //   console.log(socket.id, msg);
+        //   if(msg == socket.id){
+        //     background(255);
+        //     setTimeout(function(){
+        //       background(0);
+        //       socket.emit('random', socket.id);
+        //     }, 100);
+        //     redraw();
+        //   }
+        // });
+
+        socket.on('hold', function(msg){
+          if(msg == socket.id){
+            background(255);
+            redraw();
+          }
+        });
+
+        socket.on('off', function(msg){
+          if(msg == socket.id){
+            background(0);
             redraw();
           }
         });
       }
 
-      function mouseClicked(){
-        socket.emit('light', socket.id);
-      }
+      // function mouseClicked(){
+      //   socket.emit('light', socket.id);
+      // }
     </script>
   </body>
 </html>

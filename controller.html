@@ -1,0 +1,313 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>dis2 controller</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+      body{
+        margin: 0px;
+        padding: 0px;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        touch-action: none;
+      }
+      canvas{
+        margin: 0px;
+        padding: 0px;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        touch-action: none;
+      }
+
+      .ctrl{
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px 10px;
+        box-sizing: border-box;
+        position: absolute;
+        bottom: 0px;
+      }
+
+      .ctrl i{
+        color: rgb(123,147,173);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ctrl">
+      <i class="fa fa-arrows js-arrows"></i>
+      <i class="fa fa-paint-brush js-paint-brush"></i>
+      <i class="fa fa-random js-random"></i>
+    </div>
+    <!-- <script src = "http://requirejs.org/docs/release/2.3.5/minified/require.js"></script> -->
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.16/p5.min.js"></script>
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src = "/socket.io/socket.io.js"></script>
+    <script>
+      var socket;
+      var myId;
+
+      var moving = true;
+      var brush = false;
+      var randomLights = false;
+
+      class Node{
+        constructor(x_, y_, r_, id_){
+          this.id = id_;
+          this.x = x_;
+          this.y = y_;
+          this.radius = r_;
+        }
+
+        draw(){
+          fill(116, 160, 180);
+          ellipse(this.x, this.y, this.radius);
+          fill(142, 236, 241);
+          ellipse(this.x, this.y, this.radius/4);
+        }
+      }
+
+      let nodes = [];
+
+      var alreadySelected = false;
+      var selectedPoint = undefined;
+      var selectDist;
+      var selected = false;
+
+      function setup(){
+        createCanvas(window.innerWidth, window.innerHeight);
+        background(10, 17, 31);
+        noStroke();
+
+        $('.js-arrows').css('color', 'rgb(142, 236, 241)');
+
+        socket = io();
+        socket.on('new display', function(msg){
+          nodes[nodes.length] = new Node(random(width), random(height), width/8, msg);
+          console.log("new display connected:", msg);
+          // if(msg == socket.id){
+          //   background(255);
+          //   setTimeout(function(){
+          //     background(0);
+          //     socket.emit('light', socket.id);
+          //   }, 250);
+          //   redraw();
+          // }
+        });
+
+        socket.on('lost display', function(msg){
+          for(var i = 0; i < nodes.length; i++){
+            if(nodes[i].id == msg){
+              nodes.splice(i, 1);
+              console.log('display ' + msg + ' disconnected');
+              console.log(nodes.length + " displays remaining");
+              break;
+            }
+          }
+        });
+      }
+
+      function draw(){
+        background(10, 17, 31);
+
+        selectDist = width/8;
+        // console.log(selected);
+
+        if(mouseIsPressed && !selected){
+          for(let n of nodes){
+            if(dist(n.x, n.y, mouseX, mouseY) < selectDist){
+              selectDist = dist(n.x, n.y, mouseX, mouseY);
+              var i = nodes.indexOf(n);
+              nodes.splice(i, 1);
+              nodes.unshift(n);
+              selectedPoint = n;
+              selected = true;
+            }
+          }
+          if(selectedPoint){
+            if(moving){
+              socket.emit('hold', selectedPoint.id);
+            }
+          }
+        }
+
+        if(selected && moving){
+          //move points
+          selectedPoint.x = mouseX;
+          selectedPoint.y = mouseY;
+        }
+
+        if(mouseIsPressed && brush){
+          for(let n of nodes){
+            if(dist(n.x, n.y, mouseX, mouseY) < width/8){
+              socket.emit('hold', n.id);
+            }else{
+              socket.emit('off', n.id);
+            }
+          }
+        }
+
+        if(randomLights){
+          let randomNode = nodes[floor(random(nodes.length))];
+          socket.emit('light', randomNode.id);
+          // console.log(randomNode.id);
+        }
+
+        for(let n of nodes){
+          n.draw();
+        }
+      }
+
+      function mouseReleased(){
+
+        if(selectedPoint){
+          socket.emit('off', selectedPoint.id);
+        }
+
+        selectedPoint = undefined;
+        selected = false;
+
+        return false;
+      }
+
+      function touchEnded(){
+        if(selectedPoint){
+          socket.emit('off', selectedPoint.id);
+        }
+
+        selectedPoint = undefined;
+        selected = false;
+      }
+
+      function touchMoved(){
+        selectDist = width/8;
+        // console.log(selected);
+
+        if(mouseIsPressed && !selected && moving){
+          for(let n of nodes){
+            if(dist(n.x, n.y, mouseX, mouseY) < selectDist){
+              selectDist = dist(n.x, n.y, mouseX, mouseY);
+              var i = nodes.indexOf(n);
+              nodes.splice(i, 1);
+              nodes.unshift(n);
+              selectedPoint = n;
+              selected = true;
+            }
+          }
+          if(selectedPoint){
+            socket.emit('hold', selectedPoint.id);
+          }
+        }
+
+        if(selected && moving){
+          //move points
+          selectedPoint.x = mouseX;
+          selectedPoint.y = mouseY;
+        }
+
+        if(mouseIsPressed && brush){
+          for(let n of nodes){
+            if(dist(n.x, n.y, mouseX, mouseY) < 20){
+              socket.emit('hold', n.id);
+            }else{
+              socket.emit('off', n.id);
+            }
+          }
+        }
+
+        return false;
+      }
+
+      $('.js-arrows').on('click', function(e){
+        e.preventDefault();
+        for(let n of nodes){
+          socket.emit('off', n.id);
+        }
+
+        moving = true;
+        brush = false;
+        randomLights = false;
+
+        $(this).css('color', 'rgb(142, 236, 241)');
+        $('.js-paint-brush').css('color', 'rgb(123, 147, 173)');
+        $('.js-random').css('color', 'rgb(123, 147, 173)');
+      });
+
+      $('.js-arrows').on('tap', function(e){
+        e.preventDefault();
+        for(let n of nodes){
+          socket.emit('off', n.id);
+        }
+        moving = true;
+        brush = false;
+        randomLights = false;
+
+        $(this).css('color', 'rgb(142, 236, 241)');
+        $('.js-paint-brush').css('color', 'rgb(123, 147, 173)');
+        $('.js-random').css('color', 'rgb(123, 147, 173)');
+      });
+
+      $('.js-paint-brush').on('click', function(e){
+        e.preventDefault();
+        for(let n of nodes){
+          socket.emit('off', n.id);
+        }
+        moving = false;
+        brush = true;
+        randomLights = false;
+
+        $(this).css('color', 'rgb(142, 236, 241)');
+        $('.js-arrows').css('color', 'rgb(123, 147, 173)');
+        $('.js-random').css('color', 'rgb(123, 147, 173)');
+      });
+
+      $('.js-paint-brush').on('tap', function(e){
+        e.preventDefault();
+        for(let n of nodes){
+          socket.emit('off', n.id);
+        }
+        moving = false;
+        brush = true;
+        randomLights = false;
+
+        $(this).css('color', 'rgb(142, 236, 241)');
+        $('.js-arrows').css('color', 'rgb(123, 147, 173)');
+        $('.js-random').css('color', 'rgb(123, 147, 173)');
+      });
+
+      $('.js-random').on('click', function(e){
+        e.preventDefault();
+        for(let n of nodes){
+          socket.emit('off', n.id);
+        }
+        moving = false;
+        brush = false;
+        randomLights = true;
+
+        $(this).css('color', 'rgb(142, 236, 241)');
+        $('.js-arrows').css('color', 'rgb(123, 147, 173)');
+        $('.js-paint-brush').css('color', 'rgb(123, 147, 173)');
+      });
+
+      $('.js-random').on('tap', function(e){
+        e.preventDefault();
+        for(let n of nodes){
+          socket.emit('off', n.id);
+        }
+        moving = false;
+        brush = false;
+        randomLights = true;
+
+        $(this).css('color', 'rgb(142, 236, 241)');
+        $('.js-arrows').css('color', 'rgb(123, 147, 173)');
+        $('.js-paint-brush').css('color', 'rgb(123, 147, 173)');
+      });
+
+      $('body').on('touchmove', function (e) {
+          e.preventDefault();
+      });
+    </script>
+  </body>
+</html>

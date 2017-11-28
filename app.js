@@ -4,29 +4,52 @@ var io = require('socket.io')(http);
 var PORT = process.env.PORT || 3000;
 
 app.get('/', function(req, res){
-  res.sendFile(__dirname + '/index.html');
+  if(sockets.length > 0){
+    res.sendFile(__dirname + '/index.html');
+  }else{
+    res.sendFile(__dirname + '/controller.html');
+  }
 });
 
 var sockets = [];
 
 io.on('connection', function(socket){
   sockets.push(socket);
+  if(sockets.length > 1){
+    sockets[0].emit('new display', socket.id);
+  }
   console.log('user ' + socket.id + ' connected');
   // socket.broadcast.emit('hi');
-  socket.emit('initialize', socket.id);
 
   socket.on('light', function(msg){
-    var i = sockets[Math.floor(Math.random() * sockets.length)];
-    while(i.id == msg){
-      i = sockets[Math.floor(Math.random() * sockets.length)];
+    // var i = sockets[Math.floor(Math.random() * (sockets.length - 1)) + 1];
+    // while(i.id == msg && sockets.length > 2){
+    //   i = sockets[Math.floor(Math.random() * (sockets.length - 1)) + 1];
+    // }
+    io.emit('light', msg);
+  });
+
+  socket.on('random', function(msg){
+    var i = sockets[Math.floor(Math.random() * (sockets.length - 1)) + 1];
+    while(i.id == msg && sockets.length > 2){
+      i = sockets[Math.floor(Math.random() * (sockets.length - 1)) + 1];
     }
-    io.emit('light', i.id);
+    io.emit('random', i.id);
+  });
+
+  socket.on('hold', function(msg){
+    io.emit('hold', msg);
+  });
+
+  socket.on('off', function(msg){
+    io.emit('off', msg);
   });
 
   socket.on('disconnect', function(){
     for(var i = 0; i < sockets.length; i++){
       if(sockets[i].id == socket.id){
         sockets.splice(i, 1);
+        sockets[0].emit('lost display', socket.id);
         console.log('user ' + socket.id + ' disconnected');
         console.log(sockets.length + " users remaining");
         break;
