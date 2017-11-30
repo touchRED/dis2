@@ -99,6 +99,7 @@
     <script src = "/socket.io/socket.io.js"></script>
     <script>
       var socket;
+      var newNodes = [];
       var nodes = [];
 
       var slider;
@@ -146,7 +147,11 @@
         socket = io();
 
         socket.on('new display', function(msg){
-          nodes[nodes.length] = new Node(random(width), random(height), width/8, msg);
+          newNodes[newNodes.length] = msg;
+          if(newNodes.length == 1){
+            socket.emit('hold', newNodes[0]);
+          }
+          // nodes[nodes.length] = new Node(random(width), random(height), width/8, msg);
           console.log("new display connected:", msg);
         });
 
@@ -194,7 +199,7 @@
           selectedPoint.y = mouseY;
         }
 
-        if(mouseIsPressed && brush){
+        if(mouseIsPressed && brush && newNodes.length == 0){
           for(let n of nodes){
             if(dist(n.x, n.y, mouseX, mouseY) < width/16){
               socket.emit('light', n.id);
@@ -205,7 +210,7 @@
         }
 
         //TODO: add stepper based on frame delay
-        if(randomLights){
+        if(randomLights && frameCount % 5 == 0){
           if(nodes.length > 0){
             let randomNode = nodes[floor(random(nodes.length))];
             socket.emit('light', randomNode.id);
@@ -214,6 +219,17 @@
 
         for(let n of nodes){
           n.draw();
+        }
+      }
+
+      function mousePressed(){
+        if(newNodes.length > 0){
+          let newId = newNodes.shift();
+          socket.emit('off', newId);
+          if(newNodes.length > 0){
+            socket.emit('hold', newNodes[0]);
+          }
+          nodes[nodes.length] = new Node(mouseX, mouseY, width/8, newId);
         }
       }
 
