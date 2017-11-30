@@ -32,23 +32,10 @@
             setTimeout(function(){
               background(0);
               // socket.emit('light', socket.id);
-            }, 250);
+            }, 500);
             redraw();
           }
         });
-
-        // socket.on('random', function(msg){
-        //   background(0);
-        //   console.log(socket.id, msg);
-        //   if(msg == socket.id){
-        //     background(255);
-        //     setTimeout(function(){
-        //       background(0);
-        //       socket.emit('random', socket.id);
-        //     }, 100);
-        //     redraw();
-        //   }
-        // });
 
         socket.on('hold', function(msg){
           if(msg == socket.id){
@@ -64,10 +51,6 @@
           }
         });
       }
-
-      // function mouseClicked(){
-      //   socket.emit('light', socket.id);
-      // }
     </script>
   </body>
 </html>

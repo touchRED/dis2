@@ -49,7 +49,9 @@ io.on('connection', function(socket){
     for(var i = 0; i < sockets.length; i++){
       if(sockets[i].id == socket.id){
         sockets.splice(i, 1);
-        sockets[0].emit('lost display', socket.id);
+        if(sockets.length > 0){
+          sockets[0].emit('lost display', socket.id);
+        }
         console.log('user ' + socket.id + ' disconnected');
         console.log(sockets.length + " users remaining");
         break;

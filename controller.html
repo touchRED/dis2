@@ -22,6 +22,7 @@
 
       .ctrl{
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         width: 100%;
         padding: 10px 10px;
@@ -33,6 +34,56 @@
       .ctrl i{
         color: rgb(123,147,173);
       }
+
+      input[type="range"]{
+        width: 100%;
+        order: -1;
+        margin-bottom: 20px;
+        -webkit-appearance: none;
+        border-radius: 4px;
+      }
+      input[type=range]:focus {
+        outline: none;
+      }
+      input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 6px;
+        cursor: pointer;
+        background: rgb(123, 147, 173);
+        border-radius: 4px;
+        border: 1px solid transparent;
+      }
+      input[type=range]::-webkit-slider-thumb {
+        border: 6px solid rgb(142, 236, 241);
+        height: 32px;
+        width: 32px;
+        border-radius: 30px;
+        background: transparent;
+        cursor: pointer;
+        -webkit-appearance: none;
+        margin-top: -13px;
+      }
+      input[type=range]:focus::-webkit-slider-runnable-track {
+        background: rgb(123, 147, 173);
+      }
+      input[type=range]::-moz-range-track {
+        width: 100%;
+        height: 6px;
+        cursor: pointer;
+        background: rgb(123, 147, 173);
+        border-radius: 4px;
+        border: 1px solid transparent;
+      }
+      input[type=range]::-moz-range-thumb {
+        border: 6px solid rgb(142, 236, 241);
+        height: 32px;
+        width: 32px;
+        border-radius: 30px;
+        background: transparent;
+        cursor: pointer;
+        -webkit-appearance: none;
+        margin-top: -13px;
+      }
     </style>
   </head>
   <body>
@@ -43,16 +94,27 @@
     </div>
     <!-- <script src = "http://requirejs.org/docs/release/2.3.5/minified/require.js"></script> -->
     <script src = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.16/p5.min.js"></script>
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.16/addons/p5.dom.min.js"></script>
     <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src = "/socket.io/socket.io.js"></script>
     <script>
       var socket;
-      var myId;
+      var nodes = [];
 
+      var slider;
+
+      //flags for different modes
       var moving = true;
       var brush = false;
       var randomLights = false;
 
+      //helpful vars for moving points
+      var alreadySelected = false;
+      var selectedPoint = undefined;
+      var selectDist;
+      var selected = false;
+
+      //TODO: maybe parameterize draw function for radius
       class Node{
         constructor(x_, y_, r_, id_){
           this.id = id_;
@@ -69,32 +131,23 @@
         }
       }
 
-      let nodes = [];
-
-      var alreadySelected = false;
-      var selectedPoint = undefined;
-      var selectDist;
-      var selected = false;
-
       function setup(){
         createCanvas(window.innerWidth, window.innerHeight);
         background(10, 17, 31);
         noStroke();
 
+        var controlsContainer = select(".ctrl");
+        slider = createSlider(50, 2500, 500, 1);
+        slider.parent(controlsContainer);
+
+        //TODO: make color change 'active' class
         $('.js-arrows').css('color', 'rgb(142, 236, 241)');
 
         socket = io();
+
         socket.on('new display', function(msg){
           nodes[nodes.length] = new Node(random(width), random(height), width/8, msg);
           console.log("new display connected:", msg);
-          // if(msg == socket.id){
-          //   background(255);
-          //   setTimeout(function(){
-          //     background(0);
-          //     socket.emit('light', socket.id);
-          //   }, 250);
-          //   redraw();
-          // }
         });
 
         socket.on('lost display', function(msg){
@@ -112,8 +165,10 @@
       function draw(){
         background(10, 17, 31);
 
-        selectDist = width/8;
-        // console.log(selected);
+        fill(255);
+        text(slider.value(), 10, 20);
+
+        selectDist = width/16;
 
         if(mouseIsPressed && !selected){
           for(let n of nodes){
@@ -141,18 +196,20 @@
 
         if(mouseIsPressed && brush){
           for(let n of nodes){
-            if(dist(n.x, n.y, mouseX, mouseY) < width/8){
-              socket.emit('hold', n.id);
+            if(dist(n.x, n.y, mouseX, mouseY) < width/16){
+              socket.emit('light', n.id);
             }else{
-              socket.emit('off', n.id);
+              // socket.emit('off', n.id);
             }
           }
         }
 
+        //TODO: add stepper based on frame delay
         if(randomLights){
-          let randomNode = nodes[floor(random(nodes.length))];
-          socket.emit('light', randomNode.id);
-          // console.log(randomNode.id);
+          if(nodes.length > 0){
+            let randomNode = nodes[floor(random(nodes.length))];
+            socket.emit('light', randomNode.id);
+          }
         }
 
         for(let n of nodes){
@@ -182,8 +239,7 @@
       }
 
       function touchMoved(){
-        selectDist = width/8;
-        // console.log(selected);
+        selectDist = width/16;
 
         if(mouseIsPressed && !selected && moving){
           for(let n of nodes){
@@ -209,7 +265,7 @@
 
         if(mouseIsPressed && brush){
           for(let n of nodes){
-            if(dist(n.x, n.y, mouseX, mouseY) < 20){
+            if(dist(n.x, n.y, mouseX, mouseY) < width/16){
               socket.emit('hold', n.id);
             }else{
               socket.emit('off', n.id);
